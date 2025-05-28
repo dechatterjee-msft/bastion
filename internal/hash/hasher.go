@@ -38,17 +38,3 @@ func (h *DefaultHasher) Hash(obj *unstructured.Unstructured) (string, error) {
 	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:]), nil
 }
-
-// SanitizeAndHash returns a stable SHA-256 hash of the CR's content
-func SanitizeAndHash(obj *unstructured.Unstructured) (string, error) {
-	deepCopy := obj.DeepCopy()
-	unstructured.RemoveNestedField(deepCopy.Object, "metadata", "resourceVersion")
-	unstructured.RemoveNestedField(deepCopy.Object, "metadata", "creationTimestamp")
-	unstructured.RemoveNestedField(deepCopy.Object, "status")
-	b, err := json.Marshal(deepCopy.Object)
-	if err != nil {
-		return "", err
-	}
-	hash := sha256.Sum256(b)
-	return fmt.Sprintf("%x", hash[:]), nil
-}
