@@ -69,7 +69,20 @@ done
 # Wait for backup controller to process
 sleep 5
 
-echo "Backup files should now be present in the backup directory."
+# Update CRs to simulate changes
+for i in "${!KINDS[@]}"; do
+  KIND=${KINDS[$i]}
+  PLURAL=${PLURALS[$i]}
+  NAME="sample-${PLURAL}"
+  kubectl patch ${PLURAL} ${NAME} -n ${NAMESPACE} --type=merge -p '{"spec":{"dummy":"updated-data"}}'
+  sleep 1
+
+done
+
+# Wait again for backup controller to process updates
+sleep 5
+
+echo "Backup files should now reflect updated data in the backup directory."
 
 # Cleanup resources
 for i in "${!KINDS[@]}"; do
@@ -79,5 +92,4 @@ for i in "${!KINDS[@]}"; do
   kubectl delete ${PLURAL} ${NAME} -n ${NAMESPACE} || true
   sleep 1
   kubectl delete crd ${PLURAL}.demo.bastion.io || true
-
 done

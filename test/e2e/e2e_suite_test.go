@@ -24,7 +24,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// Run e2e tests using the Ginkgo runner.
+// StartWorkers e2e tests using the Ginkgo runner.
 func TestE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
 	fmt.Fprintf(GinkgoWriter, "Starting bastion suite\n")

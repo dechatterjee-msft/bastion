@@ -3,6 +3,8 @@ package dispatcher
 import (
 	"context"
 	"fmt"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sync"
 
 	"github.com/bastion/internal/worker"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -12,67 +14,81 @@ import (
 )
 
 type Dispatcher struct {
-	Workers map[string]*worker.BackupWorker
+	informerCancels map[string]context.CancelFunc
+	mu              sync.Mutex
 }
 
 func NewDispatcher() *Dispatcher {
 	return &Dispatcher{
-		Workers: make(map[string]*worker.BackupWorker),
+		informerCancels: make(map[string]context.CancelFunc),
 	}
 }
 
 func (d *Dispatcher) Register(ctx context.Context, gvr schema.GroupVersionResource, gvk schema.GroupVersionKind, informerFactory dynamicinformer.DynamicSharedInformerFactory, w *worker.BackupWorker) error {
-	key := gvkKey(gvk)
-	if _, exists := d.Workers[key]; exists {
-		return nil
-	}
-	d.Workers[key] = w
-	go w.Run(ctx)
-
+	logger := log.FromContext(ctx)
+	logger.Info("Registering backup controller", "gvr", gvr.String(), "gvk", gvk.String())
 	informer := informerFactory.ForResource(gvr).Informer()
 	_, err := informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			d.enqueueIfAnnotated(obj, w)
+			d.enqueueIfAnnotated(obj, w, 2)
 		},
 		UpdateFunc: func(_, newObj interface{}) {
-			d.enqueueIfAnnotated(newObj, w)
+			d.enqueueIfAnnotated(newObj, w, 0)
 		},
 		DeleteFunc: func(obj interface{}) {
-			d.enqueueIfAnnotated(obj, w)
+			d.enqueueIfAnnotated(obj, w, 1)
 		},
 	})
 	if err != nil {
 		return err
 	}
-
-	go informer.Run(ctx.Done())
+	d.mu.Lock()
+	childCtx, cancel := context.WithCancel(ctx)
+	key := gvk.String()
+	d.informerCancels[key] = cancel
+	d.mu.Unlock()
+	go informer.Run(childCtx.Done())
 	return nil
 }
 
-func (d *Dispatcher) Stop(gvk schema.GroupVersionKind) error {
-	key := gvkKey(gvk)
-	w, ok := d.Workers[key]
-	if !ok {
-		return fmt.Errorf("no worker registered for GVK %s", key)
+func (d *Dispatcher) Stop(ctx context.Context, gvk schema.GroupVersionKind) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	logger := log.FromContext(ctx)
+	if cancel, ok := d.informerCancels[gvk.String()]; ok {
+		cancel()
+		delete(d.informerCancels, gvk.String())
 	}
-	close(w.Queue) // signal graceful shutdown
-	delete(d.Workers, key)
-	fmt.Printf("Stopped dispatcher for GVK: %s\n", key)
+	logger.Info("Stopping informer", "gvk", gvk.String())
 	return nil
-}
-
-func (d *Dispatcher) enqueueIfAnnotated(obj interface{}, w *worker.BackupWorker) {
-	u, ok := obj.(*unstructured.Unstructured)
-	if !ok {
-		return
-	}
-	if u.GetAnnotations()["backup.bastion.io/enabled"] != "true" {
-		return
-	}
-	deleted := u.GetDeletionTimestamp() != nil && len(u.GetFinalizers()) == 0
-	w.Enqueue(u.DeepCopy(), deleted)
 }
 
 func gvkKey(gvk schema.GroupVersionKind) string {
 	return fmt.Sprintf("%s/%s/%s", gvk.Group, gvk.Version, gvk.Kind)
+}
+
+func (d *Dispatcher) enqueueIfAnnotated(obj interface{}, w *worker.BackupWorker, eventType worker.EventType) {
+	var (
+		u *unstructured.Unstructured
+	)
+	if eventType == 0 {
+		// Handle tombstone
+		if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
+			if realObj, ok := tombstone.Obj.(*unstructured.Unstructured); ok {
+				u = realObj
+			} else {
+				return
+			}
+		} else if o, ok := obj.(*unstructured.Unstructured); ok {
+			u = o
+		} else {
+			return
+		}
+	} else {
+		u = obj.(*unstructured.Unstructured)
+	}
+	if u.GetAnnotations()["backup.bastion.io/enabled"] != "true" {
+		return
+	}
+	w.Enqueue(u.DeepCopy(), eventType)
 }

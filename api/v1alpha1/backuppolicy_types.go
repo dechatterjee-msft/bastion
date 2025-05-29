@@ -26,7 +26,7 @@ import (
 // BackupPolicySpec defines the desired state of BackupPolicy
 type BackupPolicySpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Important: StartWorkers "make" to regenerate code after modifying this file
 
 	// Foo is an example field of BackupPolicy. Edit backuppolicy_types.go to remove/update
 	Foo string `json:"foo,omitempty"`
@@ -35,7 +35,7 @@ type BackupPolicySpec struct {
 // BackupPolicyStatus defines the observed state of BackupPolicy
 type BackupPolicyStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Important: StartWorkers "make" to regenerate code after modifying this file
 }
 
 //+kubebuilder:object:root=true

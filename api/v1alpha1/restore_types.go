@@ -26,7 +26,7 @@ import (
 // RestoreSpec defines the desired state of Restore
 type RestoreSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Important: StartWorkers "make" to regenerate code after modifying this file
 
 	// Foo is an example field of Restore. Edit restore_types.go to remove/update
 	Foo string `json:"foo,omitempty"`
@@ -35,7 +35,7 @@ type RestoreSpec struct {
 // RestoreStatus defines the observed state of Restore
 type RestoreStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Important: StartWorkers "make" to regenerate code after modifying this file
 }
 
 //+kubebuilder:object:root=true
