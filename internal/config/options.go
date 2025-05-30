@@ -3,18 +3,14 @@ package config
 import (
 	"os"
 	"strconv"
+	"time"
 )
 
 type Options struct {
-	BackupRoot string
-	MaxRetries int
-}
-
-func LoadFromEnv() *Options {
-	return &Options{
-		BackupRoot: getEnv("BACKUP_ROOT", "/backups"),
-		MaxRetries: getIntEnv("MAX_RETRIES", 3),
-	}
+	BackupRoot      string
+	MaxRetries      int
+	NumberOfWorkers int
+	GcRetain        time.Duration
 }
 
 func getEnv(key, defaultVal string) string {

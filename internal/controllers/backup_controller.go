@@ -31,6 +31,7 @@ type BackupController struct {
 	MaxRetries         int                                          // Max number of retries for failed backup attempts
 	BaseDir            string                                       // Base directory for storing backups
 	totalRegisteredGVK int                                          // Count of active GVK informers (for monitoring/logging)
+	GcRetain           time.Duration
 }
 
 // NewBackupController constructs the controller with dependencies injected from config.
@@ -41,12 +42,17 @@ func NewBackupController(cfg *config.Options) *BackupController {
 		StoreFactory: func(base string) storage.Storage { return filesystem.NewFileSystemBasedBackup(base) },
 		MaxRetries:   cfg.MaxRetries,
 		BaseDir:      cfg.BackupRoot,
+		GcRetain:     cfg.GcRetain,
 	}
 }
 
 // Setup wires the backup controller with the manager and starts CRD + backup handlers.
 func (bc *BackupController) Setup(ctx context.Context, mgr manager.Manager) error {
-	logger := log.FromContext(ctx)
+	logger := log.FromContext(ctx).WithName("BackupController").WithValues("setup")
+	logger.Info("setting up backup controller, with options",
+		"MaxRetries", bc.MaxRetries,
+		"GcRetain", bc.GcRetain,
+		"BaseDir", bc.BaseDir)
 	// Setup dynamic client and shared informer factory
 	dynamicClient := dynamic.NewForConfigOrDie(mgr.GetConfig())
 	bc.InformerFactory = dynamicinformer.NewDynamicSharedInformerFactory(dynamicClient, 0)
@@ -61,7 +67,7 @@ func (bc *BackupController) Setup(ctx context.Context, mgr manager.Manager) erro
 	bw.StartWorkers(ctx)
 
 	// Launch garbage collector for tombstone cleanup
-	garbageCollector := gc.NewGarbageCollector(70*time.Second, dynamicClient, bc.StoreFactory(bc.BaseDir))
+	garbageCollector := gc.NewGarbageCollector(bc.GcRetain, dynamicClient, bc.StoreFactory(bc.BaseDir))
 	go garbageCollector.Run(ctx)
 
 	// Start CRD informer to dynamically track new GVKs

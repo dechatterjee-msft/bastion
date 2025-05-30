@@ -22,6 +22,7 @@ import (
 	"github.com/bastion/internal/config"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"os"
+	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -54,6 +55,9 @@ func main() {
 	var probeAddr string
 	var secureMetrics bool
 	var enableHTTP2 bool
+	var backupRoot string
+	var maxRetries int
+	var gcRetain time.Duration
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metric endpoint binds to. "+
 		"Use the port :8080. If not set, it will be '0 in order to disable the metrics server")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
@@ -64,6 +68,12 @@ func main() {
 		"If set the metrics endpoint is served securely")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+
+	// Command-line flags
+	flag.StringVar(&backupRoot, "backup-root", "/backups", "Backup root directory")
+	flag.IntVar(&maxRetries, "max-retries", 5, "Maximum retry count for failed backups")
+	flag.DurationVar(&gcRetain, "gc-retain", 10*time.Minute, "Duration to retain tombstoned resources before garbage collection")
+
 	opts := zap.Options{
 		Development: true,
 	}
@@ -101,7 +111,10 @@ func main() {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
-	cfg := config.LoadFromEnv()
+	cfg := &config.Options{}
+	cfg.GcRetain = gcRetain
+	cfg.MaxRetries = maxRetries
+	cfg.BackupRoot = backupRoot
 	ctx := ctrl.SetupSignalHandler()
 	controller := controllers.NewBackupController(cfg)
 	if err := controller.Setup(ctx, mgr); err != nil {
