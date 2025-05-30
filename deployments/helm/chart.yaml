@@ -1,0 +1,5 @@
+apiVersion: v2
+name: bastion-backup
+description: A Helm chart for Bastion Backup Controller
+version: 0.1.0
+appVersion: "1.0.0"

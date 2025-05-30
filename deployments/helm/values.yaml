@@ -1,0 +1,27 @@
+replicaCount: 1
+
+image:
+  repository: your-repo/bastion-backup
+  tag: latest
+  pullPolicy: Always
+
+backupRoot: /backups
+maxRetries: 5
+gcRetain: 10m
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+persistence:
+  enabled: true
+  size: 5Gi
+  storageClass: ""
+
+serviceAccount:
+  create: true
+  name: bastion-backup-sa

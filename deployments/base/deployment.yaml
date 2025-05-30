@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bastion-backup
+  namespace: bastion-system
+  labels:
+    app: bastion-backup
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bastion-backup
+  template:
+    metadata:
+      labels:
+        app: bastion-backup
+    spec:
+      serviceAccountName: bastion-backup-sa
+      containers:
+        - name: bastion-backup
+          image: bastion-backup:latest
+          imagePullPolicy: Always
+          args:
+            - --backup-root=/backups
+            - --max-retries=5
+            - --gc-retain=10m
+          volumeMounts:
+            - name: backup-storage
+              mountPath: /backups
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+      volumes:
+        - name: backup-storage
+          persistentVolumeClaim:
+            claimName: bastion-backup-pvc
