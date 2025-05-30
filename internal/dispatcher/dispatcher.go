@@ -3,6 +3,8 @@ package dispatcher
 import (
 	"context"
 	"fmt"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/dynamic"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sync"
 
@@ -24,10 +26,15 @@ func NewDispatcher() *Dispatcher {
 	}
 }
 
-func (d *Dispatcher) Register(ctx context.Context, gvr schema.GroupVersionResource, gvk schema.GroupVersionKind, informerFactory dynamicinformer.DynamicSharedInformerFactory, w *worker.BackupWorker) error {
+func (d *Dispatcher) Register(ctx context.Context, gvr schema.GroupVersionResource, gvk schema.GroupVersionKind, dynamicClient dynamic.Interface, w *worker.BackupWorker) error {
 	logger := log.FromContext(ctx)
 	logger.Info("Registering backup controller", "gvr", gvr.String(), "gvk", gvk.String())
-	informer := informerFactory.ForResource(gvr).Informer()
+	// Create a tweakListOptions function to filter by label
+	tweakListOptions := func(opts *metav1.ListOptions) {
+		// opts.LabelSelector = "backup.bastion.io/enabled=true"
+	}
+	filteredInformerFactory := dynamicinformer.NewFilteredDynamicSharedInformerFactory(dynamicClient, 0, metav1.NamespaceAll, tweakListOptions)
+	informer := filteredInformerFactory.ForResource(gvr).Informer()
 	_, err := informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			d.enqueueIfAnnotated(obj, w, 2)
@@ -86,9 +93,6 @@ func (d *Dispatcher) enqueueIfAnnotated(obj interface{}, w *worker.BackupWorker,
 		}
 	} else {
 		u = obj.(*unstructured.Unstructured)
-	}
-	if u.GetAnnotations()["backup.bastion.io/enabled"] != "true" {
-		return
 	}
 	w.Enqueue(u.DeepCopy(), eventType)
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/bastion/internal/gc"
 	"github.com/bastion/internal/hash"
 	"github.com/bastion/internal/storage"
+	"github.com/bastion/internal/storage/filesystem"
 	"github.com/bastion/internal/worker"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -37,7 +38,7 @@ func NewBackupController(cfg *config.Options) *BackupController {
 	return &BackupController{
 		Dispatcher:   dispatcher.NewDispatcher(),
 		Hasher:       hash.NewDefaultHasher(),
-		StoreFactory: func(base string) storage.Storage { return storage.NewFileSystemWriter(base) },
+		StoreFactory: func(base string) storage.Storage { return filesystem.NewFileSystemBasedBackup(base) },
 		MaxRetries:   cfg.MaxRetries,
 		BaseDir:      cfg.BackupRoot,
 	}
@@ -60,7 +61,7 @@ func (bc *BackupController) Setup(ctx context.Context, mgr manager.Manager) erro
 	bw.StartWorkers(ctx)
 
 	// Launch garbage collector for tombstone cleanup
-	garbageCollector := gc.NewGarbageCollector(bc.BaseDir, 70*time.Second)
+	garbageCollector := gc.NewGarbageCollector(70*time.Second, dynamicClient, bc.StoreFactory(bc.BaseDir))
 	go garbageCollector.Run(ctx)
 
 	// Start CRD informer to dynamically track new GVKs
@@ -80,7 +81,7 @@ func (bc *BackupController) Setup(ctx context.Context, mgr manager.Manager) erro
 				Resource: crd.Spec.Names.Plural,
 			}
 			// Register informer for new GVK
-			_ = bc.Dispatcher.Register(ctx, gvr, gvk, bc.InformerFactory, bw)
+			_ = bc.Dispatcher.Register(ctx, gvr, gvk, dynamicClient, bw)
 			bc.totalRegisteredGVK++
 			logger.Info("Registering informers for GVK", "GVK", gvk)
 			logger.Info("Current total registered informer per GVK", "count", bc.totalRegisteredGVK)

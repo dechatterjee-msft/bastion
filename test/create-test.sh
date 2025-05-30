@@ -58,8 +58,8 @@ kind: ${KIND}
 metadata:
   name: ${NAME}
   namespace: ${NAMESPACE}
-  annotations:
-    backup.bastion.io/enabled: "true"
+  labels:
+      backup.bastion.io/enabled: "true"
 spec:
   dummy: "data"
 EOF

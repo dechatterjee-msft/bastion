@@ -31,7 +31,6 @@ type BackupWorker struct {
 	Hasher      hash.Hasher
 	Store       storage.Storage
 	MaxRetries  int
-	processed   int
 	WorkerCount int
 }
 
@@ -61,7 +60,7 @@ func (bw *BackupWorker) StartWorkers(ctx context.Context) {
 							"name", event.Object.GetName(),
 							"kind", event.GVK.Kind,
 							"eventType", event.EventType)
-					bw.processed++
+					//	bw.processed++
 					retries := 0
 					for retries < bw.MaxRetries {
 						switch event.EventType {
@@ -116,9 +115,8 @@ func (bw *BackupWorker) StartWorkers(ctx context.Context) {
 
 func (bw *BackupWorker) Stats() map[string]interface{} {
 	return map[string]interface{}{
-		"worker":    bw.Name,
-		"processed": bw.processed,
-		"queueLen":  len(bw.Queue),
+		"worker":   bw.Name,
+		"queueLen": len(bw.Queue),
 	}
 }
 
