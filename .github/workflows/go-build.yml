@@ -41,6 +41,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
+      - name: Debug Env
+        run: env | grep KUBEBUILDER
+
       - name: Run BDD Tests
         run: |
           go test ./internal/controllers/... -v --ginkgo.v --ginkgo.progress --ginkgo.fail-fast --ginkgo.timeout=10m
