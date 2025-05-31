@@ -29,10 +29,12 @@ jobs:
       - name: Install Envtest Binaries
         run: |
           go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
-          sudo  mkdir -p /usr/local/kubebuilder/bin
-          sudo  export PATH=$PATH:/usr/local/kubebuilder/bin
-          sudo  setup-envtest use 1.30.x --bin-dir /usr/local/kubebuilder/bin
-          sudo ls -al /usr/local/kubebuilder/bin
+          setup-envtest use -p env 1.30.x >> $GITHUB_ENV
+
+      - name: Print KUBEBUILDER_ASSETS
+        run:
+          echo "Assets: $KUBEBUILDER_ASSETS"
+
 
       - name: Cache Go Modules
         uses: actions/cache@v4
