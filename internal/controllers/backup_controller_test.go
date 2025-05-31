@@ -38,17 +38,16 @@ func TestBackup(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
+	testEnv = &envtest.Environment{
+		BinaryAssetsDirectory: os.Getenv("KUBEBUILDER_ASSETS"),
+	}
 	SetDefaultEventuallyTimeout(20 * time.Second)
 	SetDefaultEventuallyPollingInterval(1 * time.Second)
-
 	ctx, cancel := context.WithCancel(context.TODO())
 	stopFunc = cancel
-
 	backupRoot = os.TempDir()
-
 	By("Starting test environment")
 	testEnv = &envtest.Environment{}
-
 	cfg, err := testEnv.Start()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
@@ -80,7 +79,6 @@ var _ = DescribeTable("Backup Controller",
 	func(kind string, spec map[string]interface{}) {
 		ctx := context.Background()
 		name := "test-" + strings.ToLower(kind)
-
 		cr := &unstructured.Unstructured{}
 		cr.SetGroupVersionKind(schema.GroupVersionKind{
 			Group:   "demo.bastion.io",
@@ -93,34 +91,24 @@ var _ = DescribeTable("Backup Controller",
 			"backup.bastion.io/enabled": "true",
 		})
 		cr.Object["spec"] = spec
-
 		By("Creating CR")
 		Expect(k8sClient.Create(ctx, cr)).To(Succeed())
-
 		time.Sleep(3 * time.Second)
-
 		manifest := filepath.Join(backupRoot, "demo.bastion.io", "v1", kind, cr.GetNamespace(), cr.GetName(), "manifest.yaml")
 		hash := filepath.Join(backupRoot, "demo.bastion.io", "v1", kind, cr.GetNamespace(), cr.GetName(), "hash.txt")
-
 		By("Expecting backup files to exist")
 		Expect(manifest).Should(BeAnExistingFile())
 		Expect(hash).Should(BeAnExistingFile())
-
 		By("Updating CR")
 		patch := client.MergeFrom(cr.DeepCopy())
 		cr.Object["spec"].(map[string]interface{})["extra"] = "value"
 		Expect(k8sClient.Patch(ctx, cr, patch)).To(Succeed())
-
 		time.Sleep(3 * time.Second)
-
 		By("Expecting backup updated")
 		Expect(manifest).Should(BeAnExistingFile())
-
 		By("Deleting CR")
 		Expect(k8sClient.Delete(ctx, cr)).To(Succeed())
-
 		time.Sleep(5 * time.Second)
-
 		tombstone := filepath.Join(backupRoot, "demo.bastion.io", "v1", kind, cr.GetNamespace(), cr.GetName(), "tombstone")
 		Expect(tombstone).Should(BeAnExistingFile())
 	},
