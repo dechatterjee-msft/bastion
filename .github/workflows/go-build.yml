@@ -32,9 +32,8 @@ jobs:
           setup-envtest use -p env 1.30.x >> $GITHUB_ENV
 
       - name: Print KUBEBUILDER_ASSETS
-        run:
-          echo "Assets: $KUBEBUILDER_ASSETS"
-
+        run: |
+         echo "Assets: $KUBEBUILDER_ASSETS"
 
       - name: Cache Go Modules
         uses: actions/cache@v4
