@@ -23,6 +23,17 @@ import (
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2" //nolint:golint,revive
+
+	"context"
+	"io/ioutil"
+	"path/filepath"
+
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	clientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer/json"
+	"k8s.io/client-go/rest"
 )
 
 const (
@@ -137,4 +148,53 @@ func GetProjectDir() (string, error) {
 	}
 	wd = strings.Replace(wd, "/test/e2e", "", -1)
 	return wd, nil
+}
+
+func InstallCRDs(ctx context.Context, restCfg *rest.Config, crdPath string) error {
+	apiExtClient, err := clientset.NewForConfig(restCfg)
+	if err != nil {
+		return fmt.Errorf("failed to create API extension client: %w", err)
+	}
+
+	files, err := os.ReadDir(crdPath)
+	if err != nil {
+		return fmt.Errorf("failed to read CRD directory: %w", err)
+	}
+
+	scheme := runtime.NewScheme()
+	if err := apiextensionsv1.AddToScheme(scheme); err != nil {
+		return fmt.Errorf("failed to add CRD v1 scheme: %w", err)
+	}
+	codec := json.NewSerializerWithOptions(
+		json.DefaultMetaFactory, scheme, scheme,
+		json.SerializerOptions{Yaml: true, Pretty: false, Strict: true},
+	)
+
+	for _, f := range files {
+		path := filepath.Join(crdPath, f.Name())
+
+		data, err := ioutil.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("failed to read CRD file %s: %w", path, err)
+		}
+
+		// decode
+		obj, _, err := codec.Decode(data, nil, nil)
+		if err != nil {
+			return fmt.Errorf("failed to decode CRD file %s: %w", path, err)
+		}
+
+		crd, ok := obj.(*apiextensionsv1.CustomResourceDefinition)
+		if !ok {
+			return fmt.Errorf("decoded object is not a CRD: %T", obj)
+		}
+
+		// create CRD
+		_, err = apiExtClient.ApiextensionsV1().CustomResourceDefinitions().Create(ctx, crd, metav1.CreateOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to create CRD %s: %w", crd.Name, err)
+		}
+	}
+
+	return nil
 }

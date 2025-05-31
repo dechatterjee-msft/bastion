@@ -48,7 +48,7 @@ func NewBackupController(cfg *config.Options) *BackupController {
 
 // Setup wires the backup controller with the manager and starts CRD + backup handlers.
 func (bc *BackupController) Setup(ctx context.Context, mgr manager.Manager) error {
-	logger := log.FromContext(ctx).WithName("BackupController").WithValues("setup")
+	logger := log.FromContext(ctx).WithName("BackupController").WithName("setup")
 	logger.Info("setting up backup controller, with options",
 		"MaxRetries", bc.MaxRetries,
 		"GcRetain", bc.GcRetain,
