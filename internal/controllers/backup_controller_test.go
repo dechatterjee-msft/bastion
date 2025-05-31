@@ -47,7 +47,6 @@ var _ = BeforeSuite(func() {
 	stopFunc = cancel
 	backupRoot = os.TempDir()
 	By("Starting test environment")
-	testEnv = &envtest.Environment{}
 	cfg, err := testEnv.Start()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
