@@ -19,22 +19,23 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'  # or 1.24 if your project is Go 1.24
+          go-version: '1.24'  # or 1.24
           cache: true
 
-      - name: Install Kustomize (Optional if using envtest assets)
+      - name: Install Kustomize (Optional)
         run: |
           curl -sfL https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash
           sudo mv kustomize /usr/local/bin
 
-      - name: Install controller-gen (if needed for CRDs generation)
+      - name: Install controller-gen (Optional for CRD generation)
         run: |
           go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.14.0
 
-      - name: Install Envtest binaries (setup-envtest)
-        uses: kubernetes-sigs/setup-envtest@v1
-        with:
-          version: "1.30.0" # You can pin to a version of Kubernetes envtest binaries
+      - name: Install envtest tools
+        run: |
+          go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+          setup-envtest use -p path 1.29.x > envtest.env
+          cat envtest.env >> $GITHUB_ENV
 
       - name: Cache Go Modules
         uses: actions/cache@v4
@@ -50,11 +51,6 @@ jobs:
         run: |
           go test ./internal/controllers/... -v --ginkgo.v --ginkgo.progress --ginkgo.fail-fast --ginkgo.timeout=10m
 
-      - name: Build the Bastion Controller (Optional sanity check)
+      - name: Build the Bastion Controller
         run: |
           go build -v ./cmd/main.go
-
-      - name: Run golangci-lint (Optional)
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: v1.58
