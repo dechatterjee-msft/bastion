@@ -1,0 +1,51 @@
+name: Go Tests with KinD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'  # your Go version
+
+      - name: Install kind
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.22.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
+      - name: Create KinD cluster
+        run: |
+          kind create cluster --wait 60s
+
+      - name: Set up KUBECONFIG
+        run: |
+          echo "KUBECONFIG=${HOME}/.kube/config" >> $GITHUB_ENV
+
+      - name: Install kubectl
+        run: |
+            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+            chmod +x kubectl
+            sudo mv kubectl /usr/local/bin/
+
+      - name: Install CRDs
+        run: |
+            kubectl apply -f test/data/
+      - name: Run Tests
+        run: |
+          go test ./internal/controllers/... -v --ginkgo.v --ginkgo.progress --ginkgo.fail-fast --ginkgo.timeout=10m
+
+      - name: Delete KinD cluster
+        if: always()
+        run: kind delete cluster

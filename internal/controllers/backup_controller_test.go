@@ -2,16 +2,17 @@ package controllers
 
 import (
 	"context"
-	"github.com/bastion/test/utils"
+	"github.com/bastion/internal/config"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"os"
 	"path/filepath"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/bastion/internal/config"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -20,12 +21,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 var (
-	testEnv    *envtest.Environment
 	k8sClient  client.Client
 	backupRoot string
 	stopFunc   context.CancelFunc
@@ -38,41 +36,41 @@ func TestBackup(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
-	testEnv = &envtest.Environment{
-		BinaryAssetsDirectory: os.Getenv("KUBEBUILDER_ASSETS"),
-	}
+
 	SetDefaultEventuallyTimeout(20 * time.Second)
 	SetDefaultEventuallyPollingInterval(1 * time.Second)
+
 	ctx, cancel := context.WithCancel(context.TODO())
 	stopFunc = cancel
 	backupRoot = os.TempDir()
-	By("Starting test environment")
-	cfg, err := testEnv.Start()
+
+	By("Connecting to KinD cluster")
+	cfg, err := getKindConfig()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
-	// 🚨 Dynamically install CRDs
-	By("Installing CRDs into envtest")
-	Expect(utils.InstallCRDs(ctx, cfg, filepath.Join("..", "..", "test", "data"))).To(Succeed())
+
 	By("Starting manager and backup controller")
 	mgr, err := manager.New(cfg, manager.Options{})
 	Expect(err).NotTo(HaveOccurred())
+
 	k8sClient = mgr.GetClient()
+
 	bkpCtrl := NewBackupController(&config.Options{
 		BackupRoot: backupRoot,
 		MaxRetries: 5,
 		GcRetain:   5 * time.Minute,
 	})
 	Expect(bkpCtrl.Setup(ctx, mgr)).To(Succeed())
+
 	go func() {
 		Expect(mgr.Start(ctx)).To(Succeed())
 	}()
 })
 
-var _ = AfterSuite(func() {
-	stopFunc()
-	err := testEnv.Stop()
-	Expect(err).NotTo(HaveOccurred())
-})
+//var _ = AfterSuite(func() {
+//	stopFunc()
+//	Expect(err).NotTo(HaveOccurred())
+//})
 
 var _ = DescribeTable("Backup Controller",
 	func(kind string, spec map[string]interface{}) {
@@ -122,3 +120,12 @@ var _ = DescribeTable("Backup Controller",
 		"stages": []string{"dev", "qa", "prod"},
 	}),
 )
+
+func getKindConfig() (*rest.Config, error) {
+	kubeconfigPath := filepath.Join(os.Getenv("HOME"), ".kube", "config")
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+	if err != nil {
+		return nil, err
+	}
+	return config, nil
+}
