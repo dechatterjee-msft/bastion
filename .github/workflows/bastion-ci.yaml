@@ -142,7 +142,7 @@ jobs:
     name: Build and Release Artifacts
     needs: [ golangci-lint, bdd ]
     runs-on: ubuntu-latest
-    if: github.event_name == 'release'  # only on release
+    if: github.event_name == 'release'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -169,14 +169,12 @@ jobs:
       - name: Generate Kubernetes Manifests
         run: |
           mkdir -p deploy
-          # Assuming your k8s manifests are in `deployment` directory
           cp -r deployments/* deploy/
 
       - name: Generate Checksums
         run: |
           sha256sum bastion-app.tar.gz > bastion-app.tar.gz.sha256
           sha256sum dist/bastion-linux-* > binaries.sha256
-
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
