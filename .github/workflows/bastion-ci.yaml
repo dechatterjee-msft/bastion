@@ -7,9 +7,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-    # Trigger release on new tag push
-  release:
-    types: [ created ]
+
 
 jobs:
   prepare:
