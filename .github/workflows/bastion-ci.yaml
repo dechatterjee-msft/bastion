@@ -173,7 +173,7 @@ jobs:
           cp -r deployments/* deploy/
 
       - name: Generate SBOM
-        uses: anchore/syft-action@v0.15.0
+        uses: anchore/syft-action@v0.14.3
         with:
           image: bastion-app:${{ github.event.release.tag_name }}
           output-file: sbom.json
