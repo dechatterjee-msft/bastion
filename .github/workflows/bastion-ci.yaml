@@ -56,6 +56,13 @@ jobs:
         with:
           go-version: '1.24'
 
+      - name: Clean Go cache directories
+        run: |
+            chmod -R u+w ~/go/pkg/mod || true
+            chmod -R u+w ~/.cache/go-build || true
+            rm -rf ~/go/pkg/mod
+            rm -rf ~/.cache/go-build
+
       - name: Restore Go modules cache
         uses: actions/cache@v4
         with:
@@ -183,6 +190,18 @@ jobs:
           sha256sum bastion-app.tar.gz > bastion-app.tar.gz.sha256
           sha256sum dist/bastion-linux-* > binaries.sha256
 
+      - name: Prepare Manifests and Helm Chart
+        run: |
+          # Merge all Kubernetes manifests into a single YAML file with proper separator
+          rm -f bastion-manifests.yaml
+          for f in deployments/base/*.yaml; do
+            echo "---" >> bastion-manifests.yaml
+            cat "$f" >> bastion-manifests.yaml
+          done
+
+          # Create a tarball of the Helm chart
+          tar -czf bastion-helm-chart.tar.gz -C deployments/helm .
+
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
         with:
@@ -193,4 +212,5 @@ jobs:
             dist/bastion-linux-amd64
             dist/bastion-linux-arm64
             binaries.sha256
-            deploy/**
+            bastion-manifests.yaml
+            bastion-helm-chart.tar.gz
