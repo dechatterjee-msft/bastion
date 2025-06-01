@@ -70,10 +70,18 @@ jobs:
           --skip-dirs '.*test.*' \
           --skip-files '.*_test.go'
 
-
+  unit-test:
+    name: Run Unit Tests
+    needs: [ golangci-lint ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: run test
+        run: make unit-test
+    runs-on: ubuntu-latest
   bdd:
     name: Run BDD Tests
-    needs: [golangci-lint]
+    needs: [ unit-test ]
     runs-on: ubuntu-latest
 
     steps:
