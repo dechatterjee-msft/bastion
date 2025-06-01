@@ -22,7 +22,12 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'  # your Go version
+          go-version: '1.24'
+
+      - name: Clean Go cache directories
+        run: |
+          rm -rf ~/go/pkg/mod
+          rm -rf ~/.cache/go-build
 
       - name: Cache Go modules
         id: cache-go
@@ -158,7 +163,7 @@ jobs:
 
       - name: Save Docker image to tarball
         run: |
-          docker save bastion-app:${{ github.event.release.tag_name }} | gzip > bastion-app.tar.gz
+          docker save bastion-app:${{ github.ref_name || 'latest' }} | gzip > bastion-app.tar.gz
 
       - name: Cross-compile Go binaries
         run: |
@@ -179,6 +184,7 @@ jobs:
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
         with:
+          token: ${{ secrets.GH_PAT }}
           files: |
             bastion-app.tar.gz
             bastion-app.tar.gz.sha256
