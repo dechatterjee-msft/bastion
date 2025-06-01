@@ -170,7 +170,7 @@ jobs:
         run: |
           mkdir -p deploy
           # Assuming your k8s manifests are in `config` directory
-          cp -r config/* deploy/
+          cp -r deployments/* deploy/
 
       - name: Generate SBOM
         uses: anchore/syft-action@v0.15.0
