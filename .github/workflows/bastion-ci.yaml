@@ -169,21 +169,14 @@ jobs:
       - name: Generate Kubernetes Manifests
         run: |
           mkdir -p deploy
-          # Assuming your k8s manifests are in `config` directory
+          # Assuming your k8s manifests are in `deployment` directory
           cp -r deployments/* deploy/
-
-      - name: Generate SBOM
-        uses: anchore/syft-action@v0.14.3
-        with:
-          image: bastion-app:${{ github.event.release.tag_name }}
-          output-file: sbom.json
-          format: cyclonedx-json
 
       - name: Generate Checksums
         run: |
           sha256sum bastion-app.tar.gz > bastion-app.tar.gz.sha256
           sha256sum dist/bastion-linux-* > binaries.sha256
-          sha256sum sbom.json > sbom.json.sha256
+
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
@@ -195,5 +188,3 @@ jobs:
             dist/bastion-linux-arm64
             binaries.sha256
             deploy/**
-            sbom.json
-            sbom.json.sha256
