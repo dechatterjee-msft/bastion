@@ -1,5 +1,12 @@
 # 🚀 Bastion
 
+<p align="center">
+  <img src="https://img.shields.io/github/actions/workflow/status/dechatterjee-msft/bastion/bastion-ci.yml?branch=main&label=Build&logo=github&style=flat-square" alt="Build Status">
+  <img src="https://img.shields.io/github/v/release/dechatterjee-msft/bastion?label=Release&logo=github&style=flat-square" alt="Latest Release">
+  <img src="https://img.shields.io/github/license/dechatterjee-msft/bastion?style=flat-square" alt="License">
+  <img src="https://img.shields.io/github/languages/top/dechatterjee-msft/bastion?style=flat-square" alt="Go">
+</p>
+
 > Event-Driven, Hash-Based Backup System for Kubernetes Custom Resources (CRs)
 
 **Bastion** is a lightweight, high-performance backup controller that listens to Kubernetes Custom Resource (CR) events and triggers backups only when actual content changes. Built on hash comparison rather than full snapshots, bastion minimizes disk I/O and maximizes backup fidelity.
