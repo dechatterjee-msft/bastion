@@ -7,7 +7,34 @@ on:
     branches: [main]
 
 jobs:
-  bdd:
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-latest
+    outputs:
+      go-cache-key: ${{ steps.cache-go.outputs.cache-hit }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'  # your Go version
+
+      - name: Cache Go modules
+        id: cache-go
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+  golangci-lint:
+    name: Run Go Linter
+    needs: prepare
     runs-on: ubuntu-latest
 
     steps:
@@ -17,7 +44,56 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'  # your Go version
+          go-version: '1.24'
+
+      - name: Restore Go modules cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.57.2
+          golangci-lint --version
+
+      - name: Run golangci-lint (exclude tests)
+        run: |
+          golangci-lint run ./... \
+          --skip-dirs-use-default \
+          --skip-dirs 'test' \
+          --skip-dirs 'tests' \
+          --skip-dirs '.*test.*' \
+          --skip-files '.*_test.go'
+
+
+  bdd:
+    name: Run BDD Tests
+    needs: prepare
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Restore Go modules cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
       - name: Install kind
         run: |
@@ -35,16 +111,17 @@ jobs:
 
       - name: Install kubectl
         run: |
-            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-            chmod +x kubectl
-            sudo mv kubectl /usr/local/bin/
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
 
       - name: Install CRDs
         run: |
-            kubectl apply -f test/data/
+          kubectl apply -f test/data/
+
       - name: Run Tests
         run: |
-          go test ./internal/controllers/... -v --ginkgo.v --ginkgo.progress --ginkgo.fail-fast --ginkgo.timeout=10m
+          go test ./internal/controllers/... -v --ginkgo.v --ginkgo.fail-fast --ginkgo.timeout=10m
 
       - name: Delete KinD cluster
         if: always()
