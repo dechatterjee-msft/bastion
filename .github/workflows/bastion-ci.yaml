@@ -154,7 +154,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t bastion-app:${{ github.event.release.tag_name }} .
+          docker build -t bastion-app:${{ github.ref_name || 'latest' }} .
 
       - name: Save Docker image to tarball
         run: |
