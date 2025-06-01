@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    # Trigger release on new tag push
+  release:
+    types: [ created ]
 
 jobs:
   prepare:
@@ -134,3 +137,63 @@ jobs:
       - name: Delete KinD cluster
         if: always()
         run: kind delete cluster
+
+  release:
+    name: Build and Release Artifacts
+    needs: [ golangci-lint, bdd ]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'  # only on release
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Build Docker image
+        run: |
+          docker build -t bastion-app:${{ github.event.release.tag_name }} .
+
+      - name: Save Docker image to tarball
+        run: |
+          docker save bastion-app:${{ github.event.release.tag_name }} | gzip > bastion-app.tar.gz
+
+      - name: Cross-compile Go binaries
+        run: |
+          mkdir -p dist
+          GOOS=linux GOARCH=amd64 go build -o dist/bastion-linux-amd64 ./cmd/main.go
+          GOOS=linux GOARCH=arm64 go build -o dist/bastion-linux-arm64 ./cmd/main.go
+
+      - name: Generate Kubernetes Manifests
+        run: |
+          mkdir -p deploy
+          # Assuming your k8s manifests are in `config` directory
+          cp -r config/* deploy/
+
+      - name: Generate SBOM
+        uses: anchore/syft-action@v0.15.0
+        with:
+          image: bastion-app:${{ github.event.release.tag_name }}
+          output-file: sbom.json
+          format: cyclonedx-json
+
+      - name: Generate Checksums
+        run: |
+          sha256sum bastion-app.tar.gz > bastion-app.tar.gz.sha256
+          sha256sum dist/bastion-linux-* > binaries.sha256
+          sha256sum sbom.json > sbom.json.sha256
+
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            bastion-app.tar.gz
+            bastion-app.tar.gz.sha256
+            dist/bastion-linux-amd64
+            dist/bastion-linux-arm64
+            binaries.sha256
+            deploy/**
+            sbom.json
+            sbom.json.sha256
