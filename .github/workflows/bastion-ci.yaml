@@ -73,7 +73,7 @@ jobs:
 
   bdd:
     name: Run BDD Tests
-    needs: prepare
+    needs: [golangci-lint]
     runs-on: ubuntu-latest
 
     steps:
