@@ -84,3 +84,12 @@ sleep 5
 
 echo "Backup files should now reflect updated data in the backup directory."
 
+# Cleanup resources
+for i in "${!KINDS[@]}"; do
+  KIND=${KINDS[$i]}
+  PLURAL=${PLURALS[$i]}
+  NAME="sample-${PLURAL}"
+  kubectl delete ${PLURAL} ${NAME} -n ${NAMESPACE} || true
+  sleep 1
+  kubectl delete crd ${PLURAL}.demo.bastion.io || true
+done

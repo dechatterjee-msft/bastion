@@ -122,7 +122,6 @@ func main() {
 		setupLog.Error(err, "failed to setup backup controller")
 		os.Exit(1)
 	}
-
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")

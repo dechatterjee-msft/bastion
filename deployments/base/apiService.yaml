@@ -7,7 +7,7 @@ spec:
   version: v1beta1
   service:
     name: custom-api-service
-    namespace: default
+    namespace: bastion-system
   groupPriorityMinimum: 1000
   versionPriority: 15
   insecureSkipTLSVerify: true

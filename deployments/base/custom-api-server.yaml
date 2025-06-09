@@ -2,10 +2,10 @@ apiVersion: v1
 kind: Service
 metadata:
   name: custom-api-service
-  namespace: default
+  namespace: bastion-system
 spec:
   ports:
     - port: 443
       targetPort: 8443
   selector:
-    app: custom-api-server
+    app: bastion-backup

@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -40,7 +39,7 @@ func main() {
 	http.HandleFunc("/apis/demobastion.io/v1beta1", handler)
 	http.HandleFunc("/apis/demobastion.io/v1beta1/", handler)
 
-	setupLog.Info("Starting Custom API Server on :8443")
+	setupLog.Info("Starting Custom API Server on 8443")
 	err := http.ListenAndServeTLS(":8443", "/certs/tls.crt", "/certs/tls.key", nil)
 	if err != nil {
 		setupLog.Error(err, "Failed to start HTTPS server")
@@ -50,13 +49,10 @@ func main() {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	// fmt.Println("Received request:", r.Method, r.URL.Path)
-	// fmt.Println("Headers:", r.Header)
-	// fmt.Println("Query Params:", r.URL.Query())
+
 	gvk := r.URL.Query().Get("gvk") // Capture GVK from request
 
 	if gvk == "" {
-		//fmt.Println("GVK not provided, returning default response...")
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"message": "GVK not provided, returning default data"}`))
 		return
@@ -71,10 +67,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	group, version, kind := parts[0], parts[1], parts[2]
 
 	if r.Method == http.MethodGet {
-		fmt.Println("Received request:", r.Method, r.URL.Path)
-		fmt.Println("Headers:", r.Header)
-		fmt.Println("Query Params:", r.URL.Query())
-
 		resources, err := controller.FetchDataFromFileServer(group, version, kind)
 
 		if err != nil {
