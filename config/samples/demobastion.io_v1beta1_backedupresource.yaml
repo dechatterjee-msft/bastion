@@ -1,0 +1,7 @@
+apiVersion: demobastion.io/v1beta1
+kind: BackedupResource
+metadata:
+  name: backedupresource-sample
+  namespace: default
+spec:
+  exampleField: "exampleValue"

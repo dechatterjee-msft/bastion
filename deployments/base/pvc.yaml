@@ -5,7 +5,7 @@ metadata:
   namespace: bastion-system
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   resources:
     requests:
       storage: 5Gi

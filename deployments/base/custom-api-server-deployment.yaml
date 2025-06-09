@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: custom-api-server
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: custom-api-server  # ✅ Matches the Service selector
+  template:
+    metadata:
+      labels:
+        app: custom-api-server  # ✅ Pods get this label
+    spec:
+      volumes:
+        - name: certs  # ✅ Define the missing volume
+          secret:
+            secretName: api-server-tls
+        - name: backup-storage
+          persistentVolumeClaim:
+            claimName: bastion-backup-pvc
+      containers:
+        - name: custom-api-server
+          image: bastion-apiserver:1.0.0
+          imagePullPolicy: Never  # Replace with your actual image
+          args:
+            - --backup-root=/backups
+          ports:
+            - containerPort: 8443
+          volumeMounts:
+            - name: certs
+              mountPath: /certs
+              readOnly: true
+            - name: backup-storage
+              mountPath: /backups

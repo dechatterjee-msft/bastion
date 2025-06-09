@@ -18,8 +18,8 @@ spec:
       serviceAccountName: bastion-backup-sa
       containers:
         - name: bastion-backup
-          image: bastion-backup:latest
-          imagePullPolicy: Always
+          image: bastion:1.1.1
+          imagePullPolicy: Never
           args:
             - --backup-root=/backups
             - --max-retries=5
